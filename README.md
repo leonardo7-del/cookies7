@@ -20,9 +20,5 @@ y stock de productos.
 • Implementación de WPF para la interfaz gráfica.
 • Creación de un proyecto de instalación para su distribución.
 
+USANDO ARQUITECTURA N-CAPAS
 
-
-
-
-TENEMOS QUE USAR 
-Arquitectura N-Capas
