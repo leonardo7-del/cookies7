@@ -1,4 +1,5 @@
-PROBLEMATICA
+### PROBLEMATICA
+
 La empresa "Tech Solutions" es una compañía dedicada a la venta y distribución de productos
 tecnológicos. Actualmente, enfrenta problemas en la gestión de sus clientes, productos y
 ventas debido a un sistema obsoleto y poco escalable que dificulta la integración de nuevas
@@ -9,7 +10,7 @@ datos y ralentiza la toma de decisiones. Además, la falta de una arquitectura o
 manejo ineficiente de transacciones han provocado inconsistencias en los registros de ventas
 y stock de productos.
 
-REQUERIMIENTOS
+### REQUERIMIENTOS
 
 • Una arquitectura escalable y mantenible basada en el patrón N-Capas.
 • Un sistema de autenticación y autorización seguro.
