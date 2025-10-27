@@ -6,11 +6,13 @@ try:
     from .clientes_window import ClientesWindow
     from .productos_window import ProductosWindow
     from .ventas_window import VentasWindow
+    from .reportes_window import ReportesWindow
 except ImportError:
     # Si falla la importación relativa, usar absoluta
     from src.presentation.clientes_window import ClientesWindow
     from src.presentation.productos_window import ProductosWindow
     from src.presentation.ventas_window import VentasWindow
+    from src.presentation.reportes_window import ReportesWindow
 
 from src.domain.services.auth_service import AuthService
 
@@ -194,15 +196,13 @@ class MainWindow:
     
     def _generar_reporte_ventas(self):
         if self.auth_service.verificar_acceso(2):  # Nivel mínimo requerido: Supervisor
-            messagebox.showinfo("Reportes", "Generando reporte de ventas...")
-            # Implementar generación de reportes
+            ReportesWindow(self.root, self.auth_service)
         else:
             messagebox.showerror("Acceso Denegado", "No tiene permisos para generar reportes")
     
     def _generar_reporte_inventario(self):
         if self.auth_service.verificar_acceso(2):
-            messagebox.showinfo("Reportes", "Generando reporte de inventario...")
-            # Implementar generación de reportes
+            ReportesWindow(self.root, self.auth_service)
         else:
             messagebox.showerror("Acceso Denegado", "No tiene permisos para generar reportes")
     

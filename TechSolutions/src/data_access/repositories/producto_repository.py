@@ -1,5 +1,6 @@
-from ..database import DatabaseConnection
+from ..database import DatabaseConnection, Transaction
 from mysql.connector import Error
+from src.domain.entities.producto import Producto
 
 class ProductoRepository:
     def __init__(self):
@@ -15,9 +16,26 @@ class ProductoRepository:
             
             query = "SELECT * FROM productos WHERE activo = 1 ORDER BY nombre"
             cursor.execute(query)
-            productos = cursor.fetchall()
+            productos_data = cursor.fetchall()
             
             cursor.close()
+            
+            # Convertir a objetos Producto
+            productos = []
+            for data in productos_data:
+                producto = Producto(
+                    id=data['id'],
+                    codigo=data['codigo'],
+                    nombre=data['nombre'],
+                    descripcion=data.get('descripcion'),
+                    precio=float(data['precio']),
+                    stock=data['stock'],
+                    stock_minimo=data['stock_minimo'],
+                    activo=data['activo'],
+                    fecha_creacion=data['fecha_creacion']
+                )
+                productos.append(producto)
+            
             return productos
         except Error as e:
             print(f"Error al obtener productos: {e}")
@@ -71,32 +89,32 @@ class ProductoRepository:
             print(f"Error al buscar productos: {e}")
             return []
     
-    def crear_producto(self, datos_producto):
+    def crear_producto(self, producto):
         try:
-            connection = self.db.get_connection()
-            cursor = connection.cursor()
-            
-            query = """
-                INSERT INTO productos (codigo, nombre, descripcion, precio, stock, stock_minimo)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(query, (
-                datos_producto['codigo'],
-                datos_producto['nombre'],
-                datos_producto.get('descripcion'),
-                datos_producto['precio'],
-                datos_producto['stock'],
-                datos_producto['stock_minimo']
-            ))
-            
-            connection.commit()
-            producto_id = cursor.lastrowid
-            cursor.close()
-            
-            return producto_id
+            with Transaction() as transaction:
+                cursor = transaction.cursor()
+                
+                query = """
+                    INSERT INTO productos (codigo, nombre, descripcion, precio, stock, stock_minimo)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(query, (
+                    producto.codigo,
+                    producto.nombre,
+                    producto.descripcion,
+                    producto.precio,
+                    producto.stock,
+                    producto.stock_minimo
+                ))
+                
+                producto_id = cursor.lastrowid
+                transaction.commit()
+                
+                # Actualizar el ID del producto
+                producto.id = producto_id
+                return producto_id
         except Exception as e:
             print(f"Error al crear producto: {e}")
-            connection.rollback()
             return None
     
     def actualizar_producto(self, producto_id, datos_producto):

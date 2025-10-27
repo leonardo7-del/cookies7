@@ -1,5 +1,6 @@
-from ..database import DatabaseConnection
+from ..database import DatabaseConnection, Transaction
 from mysql.connector import Error
+from src.domain.entities.cliente import Cliente
 
 class ClienteRepository:
     def __init__(self):
@@ -15,9 +16,25 @@ class ClienteRepository:
             
             query = "SELECT * FROM clientes WHERE activo = 1 ORDER BY nombre"
             cursor.execute(query)
-            clientes = cursor.fetchall()
+            clientes_data = cursor.fetchall()
             
             cursor.close()
+            
+            # Convertir a objetos Cliente
+            clientes = []
+            for data in clientes_data:
+                cliente = Cliente(
+                    id=data['id'],
+                    nombre=data['nombre'],
+                    email=data.get('email'),
+                    telefono=data.get('telefono'),
+                    direccion=data.get('direccion'),
+                    ruc=data.get('ruc'),
+                    activo=data['activo'],
+                    fecha_creacion=data['fecha_creacion']
+                )
+                clientes.append(cliente)
+            
             return clientes
         except Error as e:
             print(f"Error al obtener clientes: {e}")
@@ -33,10 +50,22 @@ class ClienteRepository:
             
             query = "SELECT * FROM clientes WHERE id = %s AND activo = 1"
             cursor.execute(query, (cliente_id,))
-            cliente = cursor.fetchone()
+            data = cursor.fetchone()
             
             cursor.close()
-            return cliente
+            
+            if data:
+                return Cliente(
+                    id=data['id'],
+                    nombre=data['nombre'],
+                    email=data.get('email'),
+                    telefono=data.get('telefono'),
+                    direccion=data.get('direccion'),
+                    ruc=data.get('ruc'),
+                    activo=data['activo'],
+                    fecha_creacion=data['fecha_creacion']
+                )
+            return None
         except Error as e:
             print(f"Error al obtener cliente: {e}")
             return self._get_demo_cliente(cliente_id)
@@ -59,35 +88,31 @@ class ClienteRepository:
             print(f"Error al buscar clientes: {e}")
             return self._search_demo_clientes(nombre)
     
-    def crear_cliente(self, datos_cliente):
+    def crear_cliente(self, cliente):
         try:
-            connection = self.db.get_connection()
-            if connection is None:
-                return len(self._get_demo_data()) + 1
-            
-            cursor = connection.cursor()
-            
-            query = """
-                INSERT INTO clientes (nombre, email, telefono, direccion, ruc)
-                VALUES (%s, %s, %s, %s, %s)
-            """
-            cursor.execute(query, (
-                datos_cliente['nombre'],
-                datos_cliente.get('email'),
-                datos_cliente.get('telefono'),
-                datos_cliente.get('direccion'),
-                datos_cliente.get('ruc')
-            ))
-            
-            connection.commit()
-            cliente_id = cursor.lastrowid
-            cursor.close()
-            
-            return cliente_id
+            with Transaction() as transaction:
+                cursor = transaction.cursor()
+                
+                query = """
+                    INSERT INTO clientes (nombre, email, telefono, direccion, ruc)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                cursor.execute(query, (
+                    cliente.nombre,
+                    cliente.email,
+                    cliente.telefono,
+                    cliente.direccion,
+                    cliente.ruc
+                ))
+                
+                cliente_id = cursor.lastrowid
+                transaction.commit()
+                
+                # Actualizar el ID del cliente
+                cliente.id = cliente_id
+                return cliente_id
         except Error as e:
             print(f"Error al crear cliente: {e}")
-            if connection:
-                connection.rollback()
             return None
     
     def actualizar_cliente(self, cliente_id, datos_cliente):

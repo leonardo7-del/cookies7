@@ -6,19 +6,31 @@ class ClienteService:
         self.cliente_repository = ClienteRepository()
     
     def obtener_todos(self):
-        clientes_data = self.cliente_repository.obtener_todos()
-        return [Cliente(**cliente) for cliente in clientes_data]
+        # El repositorio ya retorna objetos Cliente
+        return self.cliente_repository.obtener_todos()
     
     def obtener_por_id(self, cliente_id):
-        cliente_data = self.cliente_repository.obtener_por_id(cliente_id)
-        return Cliente(**cliente_data) if cliente_data else None
+        return self.cliente_repository.obtener_por_id(cliente_id)
     
     def buscar_por_nombre(self, nombre):
         clientes_data = self.cliente_repository.buscar_por_nombre(nombre)
-        return [Cliente(**cliente) for cliente in clientes_data]
+        # Puede retornar dicts, mapear a objetos Cliente
+        clientes = []
+        for data in clientes_data:
+            clientes.append(Cliente(
+                id=data['id'],
+                nombre=data['nombre'],
+                email=data.get('email'),
+                telefono=data.get('telefono'),
+                direccion=data.get('direccion'),
+                ruc=data.get('ruc'),
+                activo=data['activo'],
+                fecha_creacion=data['fecha_creacion']
+            ))
+        return clientes
     
-    def crear_cliente(self, datos_cliente):
-        return self.cliente_repository.crear_cliente(datos_cliente)
+    def crear_cliente(self, cliente: Cliente):
+        return self.cliente_repository.crear_cliente(cliente)
     
     def actualizar_cliente(self, cliente_id, datos_cliente):
         return self.cliente_repository.actualizar_cliente(cliente_id, datos_cliente)

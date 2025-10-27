@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
 
 class Config:
     _instance = None
@@ -10,12 +14,17 @@ class Config:
         return cls._instance
     
     def _load_config(self):
-        # Configuración para MySQL - Con tus datos de conexión
-        self.db_host = '127.0.0.1'
-        self.db_port = '3306'
-        self.db_name = 'tech_solutions'
-        self.db_user = 'root'
-        self.db_password = ''  # Tu contraseña de MySQL
+        # Configuración para MySQL - Con variables de entorno o valores por defecto
+        self.db_host = os.getenv('DB_HOST', '127.0.0.1')
+        self.db_port = int(os.getenv('DB_PORT', 3306))
+        self.db_name = os.getenv('DB_NAME', 'tech_solutions')
+        self.db_user = os.getenv('DB_USER', 'root')
+        self.db_password = os.getenv('DB_PASSWORD', '')  # Tu contraseña de MySQL
+        
+        # Configuración de la aplicación
+        self.app_name = "Tech Solutions CRM"
+        self.app_version = "1.0.0"
+        self.tax_rate = 0.10  # 10% de impuesto
     
     def get_db_config(self):
         return {
@@ -23,5 +32,8 @@ class Config:
             'port': self.db_port,
             'database': self.db_name,
             'user': self.db_user,
-            'password': self.db_password
+            'password': self.db_password,
+            'autocommit': False,
+            'charset': 'utf8mb4',
+            'collation': 'utf8mb4_unicode_ci'
         }

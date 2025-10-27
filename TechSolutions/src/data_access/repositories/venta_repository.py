@@ -1,4 +1,10 @@
-from ..database import DatabaseConnection
+from ..database import DatabaseConnection, Transaction
+from mysql.connector import Error
+from src.domain.entities.venta import Venta
+from src.domain.entities.venta_detalle import VentaDetalle
+from src.domain.entities.cliente import Cliente
+from src.domain.entities.usuario import Usuario
+from src.domain.entities.producto import Producto
 
 class VentaRepository:
     def __init__(self):
@@ -72,31 +78,66 @@ class VentaRepository:
             print(f"Error al obtener venta por número de factura: {e}")
             return None
     
-    def crear_venta(self, datos_venta, connection=None):
+    def crear_venta_completa(self, venta):
+        """Crea una venta completa con sus detalles en una transacción"""
         try:
-            if connection is None:
-                connection = self.db.get_connection()
-            
-            cursor = connection.cursor()
-            
-            query = """
-                INSERT INTO ventas (numero_factura, cliente_id, usuario_id, fecha_venta, subtotal, impuesto, total)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(query, (
-                datos_venta['numero_factura'],
-                datos_venta['cliente_id'],
-                datos_venta['usuario_id'],
-                datos_venta['fecha_venta'],
-                datos_venta['subtotal'],
-                datos_venta['impuesto'],
-                datos_venta['total']
-            ))
-            
-            venta_id = cursor.lastrowid
-            cursor.close()
-            
-            return venta_id
+            with Transaction() as transaction:
+                cursor = transaction.cursor()
+                
+                # Insertar venta
+                query_venta = """
+                    INSERT INTO ventas (numero_factura, cliente_id, usuario_id, fecha_venta, 
+                                      subtotal, impuesto, total, estado)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(query_venta, (
+                    venta.numero_factura,
+                    venta.cliente.id if venta.cliente else None,
+                    venta.usuario.id if venta.usuario else None,
+                    venta.fecha_venta,
+                    venta.subtotal,
+                    venta.impuesto,
+                    venta.total,
+                    venta.estado
+                ))
+                
+                venta_id = cursor.lastrowid
+                venta.id = venta_id
+                
+                # Insertar detalles de venta
+                for detalle in venta.detalles:
+                    query_detalle = """
+                        INSERT INTO venta_detalles (venta_id, producto_id, cantidad, 
+                                                  precio_unitario, subtotal)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(query_detalle, (
+                        venta_id,
+                        detalle.producto_id,
+                        detalle.cantidad,
+                        detalle.precio_unitario,
+                        detalle.subtotal
+                    ))
+                    
+                    # Actualizar stock del producto
+                    query_stock = """
+                        UPDATE productos 
+                        SET stock = stock - %s 
+                        WHERE id = %s AND stock >= %s
+                    """
+                    cursor.execute(query_stock, (
+                        detalle.cantidad,
+                        detalle.producto_id,
+                        detalle.cantidad
+                    ))
+                    
+                    # Verificar que se actualizó el stock
+                    if cursor.rowcount == 0:
+                        raise Exception(f"Stock insuficiente para producto ID {detalle.producto_id}")
+                
+                transaction.commit()
+                return venta_id
+                
         except Exception as e:
             print(f"Error al crear venta: {e}")
             if connection:

@@ -3,6 +3,10 @@ from tkinter import ttk, messagebox
 from src.domain.services.venta_service import VentaService
 from src.domain.services.cliente_service import ClienteService
 from src.domain.services.producto_service import ProductoService
+from src.domain.entities.venta import Venta
+from src.domain.entities.venta_detalle import VentaDetalle
+from src.domain.entities.cliente import Cliente
+from src.domain.entities.usuario import Usuario
 
 class VentasWindow:
     def __init__(self, parent, auth_service):
@@ -219,32 +223,28 @@ class VentasWindow:
         # Obtener ID del cliente
         cliente_id = int(cliente_seleccionado.split(' - ')[0])
         
-        # Calcular totales
-        subtotal = sum(item['subtotal'] for item in self.carrito)
-        impuesto = subtotal * 0.10
-        total = subtotal + impuesto
+        # Crear objetos de entidades
+        cliente = Cliente(id=cliente_id)
+        usuario = Usuario(id=self.auth_service.obtener_usuario_actual().id)
         
-        # Preparar datos de la venta
-        venta_data = {
-            'cliente_id': cliente_id,
-            'usuario_id': self.auth_service.obtener_usuario_actual().id,
-            'subtotal': subtotal,
-            'impuesto': impuesto,
-            'total': total,
-            'detalles': []
-        }
+        # Crear la venta
+        venta = Venta(
+            cliente=cliente,
+            usuario=usuario
+        )
         
+        # Agregar detalles de la venta
         for item in self.carrito:
-            venta_data['detalles'].append({
-                'producto_id': item['producto'].id,
-                'cantidad': item['cantidad'],
-                'precio_unitario': item['producto'].precio,
-                'subtotal': item['subtotal']
-            })
+            detalle = VentaDetalle(
+                producto=item['producto'],
+                cantidad=item['cantidad'],
+                precio_unitario=item['producto'].precio
+            )
+            venta.agregar_detalle(detalle)
         
         # Procesar la venta
         try:
-            resultado = self.venta_service.procesar_venta(venta_data)
+            resultado = self.venta_service.procesar_venta(venta)
             if resultado['success']:
                 messagebox.showinfo("Éxito", f"Venta procesada correctamente\nNúmero de Factura: {resultado['numero_factura']}")
                 self._limpiar_carrito()
