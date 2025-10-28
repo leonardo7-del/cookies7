@@ -15,6 +15,11 @@ except ImportError:
     from src.presentation.reportes_window import ReportesWindow
 
 from src.domain.services.auth_service import AuthService
+from src.domain.services.dashboard_service import DashboardService
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
 
 class MainWindow:
     def __init__(self, usuario):
@@ -26,6 +31,7 @@ class MainWindow:
         
         self.auth_service = AuthService()
         self.auth_service.usuario_actual = usuario
+        self.dashboard_service = DashboardService()
         
         self._create_menu()
         self._create_widgets()
@@ -151,7 +157,26 @@ class MainWindow:
         metrics_frame.columnconfigure(1, weight=1)
         metrics_frame.rowconfigure(0, weight=1)
         metrics_frame.rowconfigure(1, weight=1)
-    
+        # Gráfico de ventas últimos 7 días
+        graph_frame = ttk.Frame(parent)
+        graph_frame.pack(fill='both', expand=True, pady=(10, 0))
+        try:
+            fechas, totales = self.dashboard_service.serie_ventas_ultimos_dias(7)
+        except Exception:
+            # Fallback si ocurre un error
+            fechas = []
+            totales = []
+        fig = Figure(figsize=(6, 2.5), dpi=100)
+        ax = fig.add_subplot(111)
+        if fechas:
+            ax.plot(fechas, totales, marker='o', color='#2c3e50')
+        ax.set_title('Ventas últimos 7 días', fontsize=10)
+        ax.set_ylabel('Total')
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)    
     def _create_status_bar(self):
         status_bar = ttk.Frame(self.root, relief='sunken')
         status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E))
@@ -221,3 +246,6 @@ class MainWindow:
     
     def run(self):
         self.root.mainloop()
+
+
+

@@ -1,3 +1,5 @@
-mysql-connector-python
+﻿mysql-connector-python
 reportlab
 python-dotenv
+matplotlib
+
