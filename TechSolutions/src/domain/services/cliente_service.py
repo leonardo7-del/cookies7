@@ -29,7 +29,15 @@ class ClienteService:
             ))
         return clientes
     
-    def crear_cliente(self, cliente: Cliente):
+    def crear_cliente(self, datos_cliente):
+        # Convertir el diccionario a objeto Cliente
+        cliente = Cliente(
+            nombre=datos_cliente['nombre'],
+            email=datos_cliente.get('email'),
+            telefono=datos_cliente.get('telefono'),
+            direccion=datos_cliente.get('direccion'),
+            ruc=datos_cliente.get('ruc')
+        )
         return self.cliente_repository.crear_cliente(cliente)
     
     def actualizar_cliente(self, cliente_id, datos_cliente):

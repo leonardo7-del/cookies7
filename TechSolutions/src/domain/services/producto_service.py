@@ -46,7 +46,21 @@ class ProductoService:
             ))
         return productos
     
-    def crear_producto(self, producto: Producto):
+    def crear_producto(self, datos_producto):
+        # Convertir el diccionario a un objeto Producto
+        if isinstance(datos_producto, dict):
+            producto = Producto(
+                codigo=datos_producto.get('codigo'),
+                nombre=datos_producto.get('nombre'),
+                descripcion=datos_producto.get('descripcion'),
+                precio=float(datos_producto.get('precio', 0)),
+                stock=int(datos_producto.get('stock', 0)),
+                stock_minimo=int(datos_producto.get('stock_minimo', 5)),
+                activo=datos_producto.get('activo', True)
+            )
+        else:
+            producto = datos_producto
+            
         return self.producto_repository.crear_producto(producto)
     
     def actualizar_producto(self, producto_id, datos_producto):

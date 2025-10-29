@@ -21,6 +21,10 @@ class ReportesWindow:
         self.window.transient(self.parent)
         self.window.grab_set()
         
+        # Centrar ventana
+        from src.presentation.main_window import MainWindow
+        MainWindow.center_window(self.window)
+        
         # Frame principal
         main_frame = ttk.Frame(self.window, padding="20")
         main_frame.pack(fill='both', expand=True)

@@ -1,5 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import numpy as np
+from datetime import datetime, timedelta
 
 # Cambiar estas líneas de importación
 try:
@@ -15,11 +19,8 @@ except ImportError:
     from src.presentation.reportes_window import ReportesWindow
 
 from src.domain.services.auth_service import AuthService
-from src.domain.services.dashboard_service import DashboardService
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.figure import Figure
+from src.domain.services.venta_service import VentaService
+from src.domain.services.producto_service import ProductoService
 
 class MainWindow:
     def __init__(self, usuario):
@@ -31,7 +32,8 @@ class MainWindow:
         
         self.auth_service = AuthService()
         self.auth_service.usuario_actual = usuario
-        self.dashboard_service = DashboardService()
+        self.venta_service = VentaService()
+        self.producto_service = ProductoService()
         
         self._create_menu()
         self._create_widgets()
@@ -39,6 +41,16 @@ class MainWindow:
         
         # Timer para actualizaciones automáticas
         self._setup_timer()
+    
+    @staticmethod
+    def center_window(window):
+        """Centra cualquier ventana en la pantalla."""
+        window.update_idletasks()
+        width = window.winfo_width()
+        height = window.winfo_height()
+        x = (window.winfo_screenwidth() // 2) - (width // 2)
+        y = (window.winfo_screenheight() // 2) - (height // 2)
+        window.geometry(f'{width}x{height}+{x}+{y}')
     
     def _create_menu(self):
         menubar = tk.Menu(self.root)
@@ -134,9 +146,13 @@ class MainWindow:
         self._create_dashboard(dashboard_frame)
     
     def _create_dashboard(self, parent):
-        # Aquí puedes agregar métricas y gráficos del dashboard
-        metrics_frame = ttk.Frame(parent)
-        metrics_frame.pack(fill='both', expand=True)
+        # Frame principal para el dashboard
+        dashboard_main_frame = ttk.Frame(parent)
+        dashboard_main_frame.pack(fill='both', expand=True)
+        
+        # Frame superior para métricas
+        metrics_frame = ttk.Frame(dashboard_main_frame)
+        metrics_frame.pack(fill='x', expand=False, pady=(0, 10))
         
         # Ejemplo de métricas
         metrics = [
@@ -148,35 +164,69 @@ class MainWindow:
         
         for i, (title, value) in enumerate(metrics):
             metric_frame = ttk.Frame(metrics_frame, relief='solid', padding="10")
-            metric_frame.grid(row=i//2, column=i%2, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+            metric_frame.grid(row=0, column=i, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
             
             ttk.Label(metric_frame, text=title, font=("Arial", 10)).pack()
             ttk.Label(metric_frame, text=value, font=("Arial", 16, "bold")).pack()
         
-        metrics_frame.columnconfigure(0, weight=1)
-        metrics_frame.columnconfigure(1, weight=1)
+        for i in range(4):
+            metrics_frame.columnconfigure(i, weight=1)
         metrics_frame.rowconfigure(0, weight=1)
-        metrics_frame.rowconfigure(1, weight=1)
-        # Gráfico de ventas últimos 7 días
-        graph_frame = ttk.Frame(parent)
-        graph_frame.pack(fill='both', expand=True, pady=(10, 0))
-        try:
-            fechas, totales = self.dashboard_service.serie_ventas_ultimos_dias(7)
-        except Exception:
-            # Fallback si ocurre un error
-            fechas = []
-            totales = []
-        fig = Figure(figsize=(6, 2.5), dpi=100)
-        ax = fig.add_subplot(111)
-        if fechas:
-            ax.plot(fechas, totales, marker='o', color='#2c3e50')
-        ax.set_title('Ventas últimos 7 días', fontsize=10)
-        ax.set_ylabel('Total')
-        ax.grid(True, alpha=0.3)
-        fig.tight_layout()
-        canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+        
+        # Frame inferior para gráficos
+        charts_frame = ttk.Frame(dashboard_main_frame)
+        charts_frame.pack(fill='both', expand=True)
+        
+        # Crear gráficos
+        self._create_ventas_chart(charts_frame)
+        self._create_productos_chart(charts_frame)
+    
+    def _create_ventas_chart(self, parent):
+        # Frame para el gráfico de ventas
+        ventas_frame = ttk.LabelFrame(parent, text="Ventas por Mes")
+        ventas_frame.grid(row=0, column=0, padx=10, pady=10, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Datos de ejemplo para el gráfico
+        meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']
+        ventas = [12500, 9800, 14200, 15250, 10300, 16700]
+        
+        # Crear figura y ejes
+        fig, ax = plt.subplots(figsize=(5, 4))
+        ax.bar(meses, ventas, color='#3498db')
+        ax.set_title('Ventas Mensuales')
+        ax.set_ylabel('Ventas ($)')
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        
+        # Añadir el gráfico al frame
+        canvas = FigureCanvasTkAgg(fig, master=ventas_frame)
         canvas.draw()
-        canvas.get_tk_widget().pack(fill='both', expand=True)    
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+    
+    def _create_productos_chart(self, parent):
+        # Frame para el gráfico de productos
+        productos_frame = ttk.LabelFrame(parent, text="Productos más Vendidos")
+        productos_frame.grid(row=0, column=1, padx=10, pady=10, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Datos de ejemplo para el gráfico
+        productos = ['Auriculares', 'Monitores', 'Teclados', 'Mouse', 'Cámaras']
+        cantidades = [42, 35, 28, 25, 20]
+        
+        # Crear figura y ejes
+        fig, ax = plt.subplots(figsize=(5, 4))
+        ax.pie(cantidades, labels=productos, autopct='%1.1f%%', startangle=90, 
+               shadow=True, explode=[0.05, 0, 0, 0, 0])
+        ax.set_title('Productos más Vendidos')
+        
+        # Añadir el gráfico al frame
+        canvas = FigureCanvasTkAgg(fig, master=productos_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill='both', expand=True)
+        
+        # Configurar el grid para que los gráficos se expandan
+        parent.columnconfigure(0, weight=1)
+        parent.columnconfigure(1, weight=1)
+        parent.rowconfigure(0, weight=1)
+    
     def _create_status_bar(self):
         status_bar = ttk.Frame(self.root, relief='sunken')
         status_bar.grid(row=1, column=0, sticky=(tk.W, tk.E))
@@ -246,6 +296,3 @@ class MainWindow:
     
     def run(self):
         self.root.mainloop()
-
-
-

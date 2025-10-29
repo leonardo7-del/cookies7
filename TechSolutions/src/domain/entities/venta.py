@@ -39,9 +39,17 @@ class Venta:
                 self.subtotal = sum(detalle.get('subtotal', 0) for detalle in self.detalles)
         else:
             self.subtotal = 0.0
+        
+        # Convertir a float para evitar problemas con Decimal
+        if hasattr(self.subtotal, 'to_float'):
+            subtotal_float = self.subtotal.to_float()
+        elif hasattr(self.subtotal, '__float__'):
+            subtotal_float = float(self.subtotal)
+        else:
+            subtotal_float = self.subtotal
             
-        self.impuesto = self.subtotal * tax_rate
-        self.total = self.subtotal + self.impuesto
+        self.impuesto = subtotal_float * tax_rate
+        self.total = subtotal_float + self.impuesto
         return self.total
     
     def agregar_detalle(self, detalle):

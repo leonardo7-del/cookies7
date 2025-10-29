@@ -18,6 +18,10 @@ class ClientesWindow:
         self.window.transient(self.parent)
         self.window.grab_set()
         
+        # Centrar ventana
+        from src.presentation.main_window import MainWindow
+        MainWindow.center_window(self.window)
+        
         # Frame principal
         main_frame = ttk.Frame(self.window, padding="10")
         main_frame.pack(fill='both', expand=True)
@@ -140,6 +144,10 @@ class ClientesWindow:
         form_window.geometry("400x300")
         form_window.transient(self.window)
         form_window.grab_set()
+        
+        # Centrar ventana
+        from src.presentation.main_window import MainWindow
+        MainWindow.center_window(form_window)
         
         # Frame principal
         main_frame = ttk.Frame(form_window, padding="20")

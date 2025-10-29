@@ -29,6 +29,10 @@ class VentasWindow:
         self.window.transient(self.parent)
         self.window.grab_set()
         
+        # Centrar ventana
+        from src.presentation.main_window import MainWindow
+        MainWindow.center_window(self.window)
+        
         # Frame principal
         main_frame = ttk.Frame(self.window, padding="10")
         main_frame.pack(fill='both', expand=True)
@@ -144,31 +148,63 @@ class VentasWindow:
                 messagebox.showerror("Error", "Producto no encontrado")
                 return
             
-            if producto.stock < cantidad:
-                messagebox.showerror("Error", f"Stock insuficiente. Stock disponible: {producto.stock}")
-                return
-            
-            # Verificar si el producto ya está en el carrito
-            for item in self.carrito:
-                if item['producto'].id == producto.id:
-                    messagebox.showwarning("Advertencia", "El producto ya está en el carrito")
+            # Verificar si producto es un diccionario o un objeto
+            if isinstance(producto, dict):
+                if producto['stock'] < cantidad:
+                    messagebox.showerror("Error", f"Stock insuficiente. Stock disponible: {producto['stock']}")
                     return
-            
-            # Agregar al carrito
-            subtotal = producto.precio * cantidad
-            self.carrito.append({
-                'producto': producto,
-                'cantidad': cantidad,
-                'subtotal': subtotal
-            })
+                
+                # Verificar si el producto ya está en el carrito
+                for item in self.carrito:
+                    if item['producto']['id'] == producto['id']:
+                        messagebox.showwarning("Advertencia", "El producto ya está en el carrito")
+                        return
+                
+                # Agregar al carrito
+                subtotal = producto['precio'] * cantidad
+                self.carrito.append({
+                    'producto': producto,
+                    'cantidad': cantidad,
+                    'subtotal': subtotal
+                })
+            else:
+                # Manejo para objeto
+                if producto.stock < cantidad:
+                    messagebox.showerror("Error", f"Stock insuficiente. Stock disponible: {producto.stock}")
+                    return
+                
+                # Verificar si el producto ya está en el carrito
+                for item in self.carrito:
+                    if isinstance(item['producto'], dict):
+                        if item['producto']['id'] == producto.id:
+                            messagebox.showwarning("Advertencia", "El producto ya está en el carrito")
+                            return
+                    else:
+                        if item['producto'].id == producto.id:
+                            messagebox.showwarning("Advertencia", "El producto ya está en el carrito")
+                            return
+                
+                # Agregar al carrito
+                subtotal = producto.precio * cantidad
+                self.carrito.append({
+                    'producto': producto,
+                    'cantidad': cantidad,
+                    'subtotal': subtotal
+                })
             
             # Agregar al treeview
+            nombre_producto = producto['nombre'] if isinstance(producto, dict) else producto.nombre
+            precio_producto = producto['precio'] if isinstance(producto, dict) else producto.precio
+            
             self.carrito_tree.insert('', 'end', values=(
-                producto.nombre,
-                f"${producto.precio:.2f}",
+                nombre_producto,
+                f"${precio_producto:.2f}",
                 cantidad,
                 f"${subtotal:.2f}"
             ))
+            
+            # Asegurar que los elementos sean visibles
+            self.carrito_tree.yview_moveto(1.0)  # Desplazar a la última fila
             
             # Actualizar totales
             self._actualizar_totales()
@@ -197,6 +233,12 @@ class VentasWindow:
     
     def _actualizar_totales(self):
         subtotal = sum(item['subtotal'] for item in self.carrito)
+        # Convertir a float para evitar problemas con Decimal
+        if hasattr(subtotal, 'to_float'):
+            subtotal = subtotal.to_float()
+        elif hasattr(subtotal, '__float__'):
+            subtotal = float(subtotal)
+            
         impuesto = subtotal * 0.10  # 10% de impuesto
         total = subtotal + impuesto
         
@@ -225,21 +267,37 @@ class VentasWindow:
         
         # Crear objetos de entidades
         cliente = Cliente(id=cliente_id)
-        usuario = Usuario(id=self.auth_service.obtener_usuario_actual().id)
+        
+        # Obtener el usuario actual completo
+        usuario_actual = self.auth_service.obtener_usuario_actual()
         
         # Crear la venta
         venta = Venta(
             cliente=cliente,
-            usuario=usuario
+            usuario=usuario_actual
         )
         
         # Agregar detalles de la venta
         for item in self.carrito:
+            producto = item['producto']
+            
+            # Verificar si producto es un diccionario o un objeto
+            if isinstance(producto, dict):
+                producto_id = producto['id']
+                precio_unitario = producto['precio']
+            else:
+                producto_id = producto.id
+                precio_unitario = producto.precio
+                
+            # Crear el detalle con los valores correctos
             detalle = VentaDetalle(
-                producto=item['producto'],
+                producto_id=producto_id,
                 cantidad=item['cantidad'],
-                precio_unitario=item['producto'].precio
+                precio_unitario=precio_unitario,
+                subtotal=item['subtotal']
             )
+            # Asignar el producto completo para referencia
+            detalle.producto = producto
             venta.agregar_detalle(detalle)
         
         # Procesar la venta
@@ -248,6 +306,7 @@ class VentasWindow:
             if resultado['success']:
                 messagebox.showinfo("Éxito", f"Venta procesada correctamente\nNúmero de Factura: {resultado['numero_factura']}")
                 self._limpiar_carrito()
+                self._load_productos()  # Recargar productos para actualizar stock
                 self.window.destroy()
             else:
                 messagebox.showerror("Error", f"No se pudo procesar la venta: {resultado['error']}")

@@ -18,6 +18,10 @@ class ProductosWindow:
         self.window.transient(self.parent)
         self.window.grab_set()
         
+        # Centrar ventana
+        from src.presentation.main_window import MainWindow
+        MainWindow.center_window(self.window)
+        
         # Frame principal
         main_frame = ttk.Frame(self.window, padding="10")
         main_frame.pack(fill='both', expand=True)
@@ -108,9 +112,14 @@ class ProductosWindow:
     def _mostrar_formulario_producto(self, producto=None):
         form_window = tk.Toplevel(self.window)
         form_window.title("Nuevo Producto" if not producto else "Editar Producto")
-        form_window.geometry("400x400")
+        form_window.geometry("500x500")  # Aumentar altura para asegurar que los botones sean visibles
+        form_window.resizable(False, False)
         form_window.transient(self.window)
         form_window.grab_set()
+        
+        # Centrar ventana
+        from src.presentation.main_window import MainWindow
+        MainWindow.center_window(form_window)
         
         # Frame principal
         main_frame = ttk.Frame(form_window, padding="20")
@@ -143,14 +152,23 @@ class ProductosWindow:
         
         # Si estamos editando, cargar datos
         if producto:
-            codigo_entry.insert(0, producto.codigo)
-            nombre_entry.insert(0, producto.nombre)
-            descripcion_text.insert('1.0', producto.descripcion or '')
-            precio_entry.insert(0, str(producto.precio))
-            stock_entry.insert(0, str(producto.stock))
-            stock_minimo_entry.insert(0, str(producto.stock_minimo))
+            # Verificar si producto es un diccionario o un objeto
+            if isinstance(producto, dict):
+                codigo_entry.insert(0, producto.get('codigo', ''))
+                nombre_entry.insert(0, producto.get('nombre', ''))
+                descripcion_text.insert('1.0', producto.get('descripcion', '') or '')
+                precio_entry.insert(0, str(producto.get('precio', 0)))
+                stock_entry.insert(0, str(producto.get('stock', 0)))
+                stock_minimo_entry.insert(0, str(producto.get('stock_minimo', 0)))
+            else:
+                codigo_entry.insert(0, producto.codigo)
+                nombre_entry.insert(0, producto.nombre)
+                descripcion_text.insert('1.0', producto.descripcion or '')
+                precio_entry.insert(0, str(producto.precio))
+                stock_entry.insert(0, str(producto.stock))
+                stock_minimo_entry.insert(0, str(producto.stock_minimo))
         
-        # Botones
+        # Botones - Usar pack para asegurar visibilidad
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=6, column=0, columnspan=2, pady=20)
         
@@ -177,7 +195,8 @@ class ProductosWindow:
                 
                 if producto:
                     # Actualizar
-                    if self.producto_service.actualizar_producto(producto.id, datos_producto):
+                    producto_id = producto['id'] if isinstance(producto, dict) else producto.id
+                    if self.producto_service.actualizar_producto(producto_id, datos_producto):
                         messagebox.showinfo("Éxito", "Producto actualizado correctamente")
                         form_window.destroy()
                         self._load_productos()
@@ -195,10 +214,14 @@ class ProductosWindow:
             except ValueError:
                 messagebox.showerror("Error", "Precio, stock y stock mínimo deben ser números válidos")
         
-        ttk.Button(button_frame, text="Guardar", 
-                  command=guardar_producto).pack(side='left', padx=(0, 10))
-        ttk.Button(button_frame, text="Cancelar", 
-                  command=form_window.destroy).pack(side='left')
+        # Usar pack en lugar de grid para los botones para asegurar visibilidad
+        guardar_btn = ttk.Button(button_frame, text="Guardar", command=guardar_producto, width=10)
+        guardar_btn.pack(side='left', padx=(0, 10))
         
-        # Focus en el primer campo
+        cancelar_btn = ttk.Button(button_frame, text="Cancelar", command=form_window.destroy, width=10)
+        cancelar_btn.pack(side='left')
+        
+        # Asegurar que los widgets se actualicen y sean visibles
+        form_window.update_idletasks()
+        form_window.lift()
         codigo_entry.focus()
